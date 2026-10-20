@@ -6,6 +6,8 @@ Control your desk via Bluetooth Low Energy (BLE), monitor its height, and receiv
 
 Built for everyday use: smart, practical, and unobtrusive.
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support%20ChrisTinkers-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/christinkers)
+
 ## Features
 
 - **Bluetooth desk control** using an ESP32 and ESPHome
@@ -108,6 +110,10 @@ The software is provided without warranty. Use it at your own risk.
 This is an independent, unofficial open-source project. It is not affiliated with, endorsed by, or sponsored by Eliot, Jiecang, or their respective manufacturers.
 
 All trademarks belong to their respective owners.
+
+## Support this project ☕
+
+If SmartWork for Eliot has helped you, you can [buy me a coffee](https://buymeacoffee.com/christinkers). Contributions are entirely optional and help support future DIY electronics and open-source smart home projects. The project remains free and open source.
 
 ## License
 
