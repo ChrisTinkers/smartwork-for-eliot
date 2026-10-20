@@ -1,0 +1,128 @@
+esphome:
+  name: esphome-schreibtisch
+  friendly_name: ESPHome Schreibtisch
+  min_version: 2026.4.0
+  name_add_mac_suffix: false
+
+esp32:
+  variant: esp32
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# Four BLE connections: three Bluetooth proxy slots plus one desk BLE client.
+esp32_ble:
+  max_connections: 4
+
+esp32_ble_tracker:
+
+bluetooth_proxy:
+  active: true
+
+# Internal motion and command state.
+globals:
+  - id: eliot_letzte_hoehe
+    type: float
+    restore_value: no
+    initial_value: 'NAN'
+
+  - id: eliot_letzte_bewegung
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+
+  - id: eliot_letzte_messung
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+
+  - id: eliot_hoehe_gueltig
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  # Command generation counter (reserved for future command handling).
+  - id: eliot_auftrag
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+
+  - id: eliot_fahrversuch
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: eliot_bewegung_erkannt
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+# BLE MAC must be set in the user's private ESPHome secrets.yaml.
+ble_client:
+  - mac_address: !secret eliot_ble_mac
+    id: eliot_ble
+
+    on_connect:
+      then:
+        - binary_sensor.template.publish:
+            id: eliot_ble_verbunden
+            state: ON
+
+    on_disconnect:
+      then:
+        - binary_sensor.template.publish:
+            id: eliot_ble_verbunden
+            state: OFF
+        - lambda: |-
+            id(eliot_hoehe_gueltig) = false;
+            id(eliot_letzte_hoehe) = NAN;
+            id(eliot_fahrversuch) = false;
+            id(eliot_bewegung_erkannt) = false;
+            id(eliot_auftrag)++;
+        - binary_sensor.template.publish:
+            id: eliot_tisch_in_bewegung
+            state: OFF
+
+binary_sensor:
+  - platform: template
+    name: "Eliot Bluetooth verbunden"
+    id: eliot_ble_verbunden
+    device_class: connectivity
+
+  - platform: template
+    name: "Eliot Tisch in Bewegung"
+    id: eliot_tisch_in_bewegung
+    device_class: moving
+
+# Movement is inferred from changes in the BLE height notifications.
+interval:
+  - interval: 200ms
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(eliot_ble_verbunden).has_state() &&
+                     id(eliot_ble_verbunden).state &&
+                     id(eliot_hoehe_gueltig);
+          then:
+            - binary_sensor.template.publish:
+                id: eliot_tisch_in_bewegung
+                state: !lambda |-
+                  return (millis() - id(eliot_letzte_bewegung)) < 1000;
+
+sensor:
+  - platform: ble_client
+    type: characteristic
+    ble_client_id: eliot_ble
+    name: "Eliot Tischhöhe"
