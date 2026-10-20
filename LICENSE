@@ -51,6 +51,24 @@ The core functionality has been tested successfully, including BLE communication
 
 Compatibility with additional Eliot and Jiecang controllers has not yet been verified.
 
+## Roadmap
+
+### Planned: Presence Detection
+
+A future version of SmartWork is planned to include optional presence detection using an **LD2410C mmWave radar sensor** connected to the ESP32.
+
+The goal is to make reminders even more context-aware:
+
+- Detect whether someone is actually at the desk.
+- Pause sitting and standing timers when the desk is unattended.
+- Resume reminders when the user returns.
+- Avoid unnecessary notifications during breaks or meetings away from the desk.
+- Explore a compact, 3D-printed enclosure combining the ESP32 and radar sensor.
+
+**Current status:** Planning stage. Not yet implemented or tested.
+
+Presence detection will remain optional. The existing reminder system will continue to work without additional sensors.
+
 ## Installation
 
 The project consists of two components:
