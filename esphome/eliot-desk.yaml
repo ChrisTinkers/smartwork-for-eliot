@@ -21,7 +21,7 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
-# Bluetooth: 3 proxy connections + 1 desk client.
+# Four BLE connections: three Bluetooth proxy slots plus one desk BLE client.
 esp32_ble:
   max_connections: 4
 
@@ -30,7 +30,7 @@ esp32_ble_tracker:
 bluetooth_proxy:
   active: true
 
-# Internal state.
+# Internal motion and command state.
 globals:
   - id: eliot_letzte_hoehe
     type: float
@@ -52,7 +52,7 @@ globals:
     restore_value: no
     initial_value: 'false'
 
-  # A new command or stop invalidates older attempts.
+  # Command generation counter (reserved for future command handling).
   - id: eliot_auftrag
     type: uint32_t
     restore_value: no
@@ -68,7 +68,7 @@ globals:
     restore_value: no
     initial_value: 'false'
 
-# Set your own desk BLE MAC in private ESPHome secrets.yaml.
+# BLE MAC must be set in the user's private ESPHome secrets.yaml.
 ble_client:
   - mac_address: !secret eliot_ble_mac
     id: eliot_ble
@@ -105,7 +105,7 @@ binary_sensor:
     id: eliot_tisch_in_bewegung
     device_class: moving
 
-# Motion is inferred from changing BLE height notifications.
+# Movement is inferred from changes in the BLE height notifications.
 interval:
   - interval: 200ms
     then:
@@ -126,200 +126,3 @@ sensor:
     type: characteristic
     ble_client_id: eliot_ble
     name: "Eliot Tischhöhe"
-    id: eliot_hoehe
-    service_uuid: "FE60"
-    characteristic_uuid: "FE62"
-    notify: true
-    update_interval: 60s
-    unit_of_measurement: "cm"
-    accuracy_decimals: 1
-    device_class: distance
-    state_class: measurement
-
-    lambda: |-
-      if (x.size() < 9) return NAN;
-
-      if (x[0] != 0xF2 || x[1] != 0xF2 || x[8] != 0x7E)
-        return NAN;
-
-      uint16_t hoehe = (uint16_t(x[4]) << 8) | x[5];
-      return hoehe / 10.0f;
-
-    on_value:
-      then:
-        - lambda: |-
-            const float aktuell = x;
-
-            if (isnan(aktuell)) return;
-
-            id(eliot_letzte_messung) = millis();
-
-            if (!id(eliot_hoehe_gueltig)) {
-              id(eliot_letzte_hoehe) = aktuell;
-              id(eliot_hoehe_gueltig) = true;
-              return;
-            }
-
-            if (fabsf(aktuell - id(eliot_letzte_hoehe)) >= 0.3f) {
-              id(eliot_letzte_bewegung) = millis();
-
-              if (id(eliot_fahrversuch)) {
-                id(eliot_bewegung_erkannt) = true;
-              }
-            }
-
-            id(eliot_letzte_hoehe) = aktuell;
-
-# Shared position control: send a preset command and retry once if stationary.
-script:
-  - id: eliot_position_anfahren
-    mode: single
-    parameters:
-      position: int
-    then:
-      - if:
-          condition:
-            lambda: |-
-              return !id(eliot_fahrversuch) &&
-                     id(eliot_ble_verbunden).has_state() &&
-                     id(eliot_ble_verbunden).state &&
-                     id(eliot_hoehe_gueltig) &&
-                     id(eliot_tisch_in_bewegung).has_state() &&
-                     !id(eliot_tisch_in_bewegung).state &&
-                     (millis() - id(eliot_letzte_bewegung) > 3000) &&
-                     (millis() - id(eliot_letzte_messung) < 65000);
-          then:
-            - lambda: |-
-                id(eliot_fahrversuch) = true;
-                id(eliot_bewegung_erkannt) = false;
-                id(eliot_auftrag)++;
-
-            - logger.log:
-                format: "ELIOT: Positionsauftrag %d gestartet"
-                args: [ 'position' ]
-
-            - if:
-                condition:
-                  lambda: 'return position == 1;'
-                then:
-                  - ble_client.ble_write:
-                      id: eliot_ble
-                      service_uuid: "FE60"
-                      characteristic_uuid: "FE61"
-                      value: [0xF1, 0xF1, 0x05, 0x00, 0x05, 0x7E]
-
-            - if:
-                condition:
-                  lambda: 'return position == 2;'
-                then:
-                  - ble_client.ble_write:
-                      id: eliot_ble
-                      service_uuid: "FE60"
-                      characteristic_uuid: "FE61"
-                      value: [0xF1, 0xF1, 0x06, 0x00, 0x06, 0x7E]
-
-            - if:
-                condition:
-                  lambda: 'return position == 3;'
-                then:
-                  - ble_client.ble_write:
-                      id: eliot_ble
-                      service_uuid: "FE60"
-                      characteristic_uuid: "FE61"
-                      value: [0xF1, 0xF1, 0x27, 0x00, 0x27, 0x7E]
-
-            - delay: 2s
-
-            # Retry only if still safely detected as stationary.
-            - if:
-                condition:
-                  lambda: |-
-                    return id(eliot_fahrversuch) &&
-                           !id(eliot_bewegung_erkannt) &&
-                           id(eliot_ble_verbunden).state &&
-                           id(eliot_hoehe_gueltig) &&
-                           id(eliot_tisch_in_bewegung).has_state() &&
-                           !id(eliot_tisch_in_bewegung).state &&
-                           (millis() - id(eliot_letzte_bewegung) > 3000) &&
-                           (millis() - id(eliot_letzte_messung) < 65000);
-                then:
-                  - logger.log:
-                      format: "ELIOT: Keine Bewegung, wiederhole Position %d"
-                      args: [ 'position' ]
-
-                  - if:
-                      condition:
-                        lambda: 'return position == 1;'
-                      then:
-                        - ble_client.ble_write:
-                            id: eliot_ble
-                            service_uuid: "FE60"
-                            characteristic_uuid: "FE61"
-                            value: [0xF1, 0xF1, 0x05, 0x00, 0x05, 0x7E]
-
-                  - if:
-                      condition:
-                        lambda: 'return position == 2;'
-                      then:
-                        - ble_client.ble_write:
-                            id: eliot_ble
-                            service_uuid: "FE60"
-                            characteristic_uuid: "FE61"
-                            value: [0xF1, 0xF1, 0x06, 0x00, 0x06, 0x7E]
-
-                  - if:
-                      condition:
-                        lambda: 'return position == 3;'
-                      then:
-                        - ble_client.ble_write:
-                            id: eliot_ble
-                            service_uuid: "FE60"
-                            characteristic_uuid: "FE61"
-                            value: [0xF1, 0xF1, 0x27, 0x00, 0x27, 0x7E]
-
-            - lambda: |-
-                id(eliot_fahrversuch) = false;
-
-          else:
-            - logger.log: "ELIOT: Positionsauftrag gesperrt"
-
-button:
-  - platform: template
-    name: "Eliot Sitzen"
-    id: eliot_sitzen
-    on_press:
-      - script.execute:
-          id: eliot_position_anfahren
-          position: 1
-
-  - platform: template
-    name: "Eliot Stehen"
-    id: eliot_stehen
-    on_press:
-      - script.execute:
-          id: eliot_position_anfahren
-          position: 2
-
-  - platform: template
-    name: "Eliot Laufband"
-    id: eliot_laufband
-    on_press:
-      - script.execute:
-          id: eliot_position_anfahren
-          position: 3
-
-  - platform: template
-    name: "Eliot Stopp"
-    id: eliot_test_stopp
-    on_press:
-      - logger.log: "ELIOT: Stopptaste gedrueckt"
-      - script.stop: eliot_position_anfahren
-      - lambda: |-
-          id(eliot_fahrversuch) = false;
-          id(eliot_bewegung_erkannt) = false;
-          id(eliot_auftrag)++;
-      - ble_client.ble_write:
-          id: eliot_ble
-          service_uuid: "FE60"
-          characteristic_uuid: "FE61"
-          value: [0xF1, 0xF1, 0x2B, 0x00, 0x2B, 0x7E]
