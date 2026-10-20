@@ -77,16 +77,16 @@ On the tested controller, the first position command sometimes only wakes the de
    | `button.REPLACE_WITH_SIT_BUTTON_ENTITY` | Sit preset button |
    | `notify.REPLACE_WITH_MOBILE_NOTIFY_ACTION` | Your working mobile notification action |
 
-   Example notification action: `notify.mobile_app_my_iphone` (**example only**). Confirm the actual action under **Developer Tools → Actions** and send a test notification before continuing.
+   Example notification action: `notify.mobile_app_my_iphone` (**example only**). Confirm the actual action under **Developer Tools → Actions** and send a test notification before continuing. Replace the complete action name in both notification branches; do not add a second `notify.` prefix.
 5. Adjust the position thresholds in the package's template sensor. The sample logic is **below 95 cm = sitting; 95 to below 116 cm = standing; 116 cm and above = treadmill**. These thresholds reflect one user's desk and are **not universal**. Choose values that correctly classify your own presets.
 6. Review the default schedule and intervals in the package: **Monday–Friday, 08:00–16:00; 50 minutes sitting, 30 minutes standing, reminders every 10 minutes**. Edit them to suit your routine.
-7. Run Home Assistant's configuration check and restart Home Assistant to load the package. Check logs for errors.
+7. Run Home Assistant's configuration check and restart Home Assistant to load the package. Check logs for errors. The package is an **example template** and has not been independently validated on a clean Home Assistant installation; test the adapted configuration before relying on it.
 
 ## 6. Enable and test SmartWork
 
 1. Find `input_boolean.eliot_smartwork_aktiv` under **Developer Tools → States** or add it as a toggle to a dashboard. Turn it **on** to enable reminders.
 2. Confirm the template entity `sensor.eliot_smartwork_position` shows `sitzen`, `stehen`, or `laufband` as expected.
-3. The daily reset automation runs at **08:00 on weekdays**. Position changes also update the next-reminder time. For an immediate controlled test, inspect and, if needed, set `input_datetime.eliot_smartwork_naechste_erinnerung` to an appropriate near-future time during the configured active hours.
+3. The daily reset automation runs at **08:00 on weekdays**. Position changes also update the next-reminder time. **If you enable SmartWork for the first time after 08:00, no initial reminder time is automatically created just by switching it on.** For an immediate controlled test, open **Developer Tools → Actions**, run `input_datetime.set_datetime` targeting `input_datetime.eliot_smartwork_naechste_erinnerung`, and set its date/time to a few minutes from now during the configured active hours. Alternatively, wait for the next weekday's 08:00 reset. A real position change can also schedule a reminder.
 4. Verify that a notification arrives on your phone. Available actions include **Jetzt stehen / Jetzt sitzen**, **In 10 Minuten**, and **Heute nicht** (wording may depend on the package version).
 5. Test each action with the desk supervised. **Only explicit user actions should initiate desk movement**; reminders themselves do not move it.
 
