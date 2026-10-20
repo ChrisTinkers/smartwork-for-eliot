@@ -1,0 +1,334 @@
+# SmartWork for Eliot - Home Assistant package (example template)
+# IMPORTANT: Replace all REPLACE_WITH_* placeholders before installing.
+# The settings below mirror the tested installation: weekdays 08:00-16:00,
+# 50 minutes sitting, 30 minutes standing, 10-minute reminder repeats.
+# Position thresholds (95 cm / 116 cm) must be adjusted to your own desk presets.
+# This file is a template, not a drop-in configuration.
+
+
+# ============================================
+# ELIOT SMARTWORK – STUFE 1
+# Montag–Freitag, 08:00–16:00
+# Sitzen: 50 Minuten
+# Stehen: 30 Minuten
+# Erinnern: alle 10 Minuten
+# ============================================
+
+input_boolean:
+  eliot_smartwork_aktiv:
+    name: Eliot SmartWork aktiv
+    icon: mdi:desk
+
+  eliot_smartwork_heute_pause:
+    name: Eliot SmartWork heute pausiert
+    icon: mdi:calendar-remove
+
+input_datetime:
+  eliot_smartwork_naechste_erinnerung:
+    name: Eliot SmartWork nächste Erinnerung
+    has_date: true
+    has_time: true
+
+template:
+  - sensor:
+      - name: "Eliot SmartWork Position"
+        unique_id: eliot_smartwork_position
+        icon: mdi:desk
+        availability: >-
+          {{ is_state(
+            'binary_sensor.REPLACE_WITH_BLE_CONNECTION_ENTITY',
+            'on'
+          ) and is_number(states(
+            'sensor.REPLACE_WITH_DESK_HEIGHT_ENTITY'
+          )) }}
+        state: >-
+          {% set h = states(
+            'sensor.REPLACE_WITH_DESK_HEIGHT_ENTITY'
+          ) | float(0) %}
+          {% if h < 95 %}
+            sitzen
+          {% elif h < 116 %}
+            stehen
+          {% else %}
+            laufband
+          {% endif %}
+
+automation:
+
+  # Tägliche Rücksetzung
+  - id: eliot_smartwork_tagesstart
+    alias: "Eliot SmartWork – Tagesstart"
+    triggers:
+      - trigger: time
+        at: "08:00:00"
+    conditions:
+      - condition: time
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+    actions:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.eliot_smartwork_heute_pause
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.eliot_smartwork_naechste_erinnerung
+        data:
+          datetime: >-
+            {{ (now() + timedelta(minutes=50))
+               .strftime('%Y-%m-%d %H:%M:%S') }}
+
+  # Timer nach stabiler Positionsänderung
+  - id: eliot_smartwork_positionswechsel
+    alias: "Eliot SmartWork – Positionswechsel"
+    triggers:
+      - trigger: state
+        entity_id: sensor.eliot_smartwork_position
+        to: sitzen
+        for: "00:00:05"
+      - trigger: state
+        entity_id: sensor.eliot_smartwork_position
+        to: stehen
+        for: "00:00:05"
+      - trigger: state
+        entity_id: sensor.eliot_smartwork_position
+        to: laufband
+        for: "00:00:05"
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none
+             and trigger.from_state.state in
+             ['sitzen', 'stehen', 'laufband'] }}
+    actions:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.eliot_smartwork_naechste_erinnerung
+        data:
+          datetime: >-
+            {% set minuten =
+               50 if trigger.to_state.state == 'sitzen'
+               else 30 %}
+            {{ (now() + timedelta(minutes=minuten))
+               .strftime('%Y-%m-%d %H:%M:%S') }}
+
+  # Wiederherstellung nach Verbindungsausfall
+  - id: eliot_smartwork_wiederverbunden
+    alias: "Eliot SmartWork – Wieder verbunden"
+    triggers:
+      - trigger: state
+        entity_id: >-
+          binary_sensor.REPLACE_WITH_BLE_CONNECTION_ENTITY
+        to: "on"
+        for: "00:00:10"
+    actions:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.eliot_smartwork_naechste_erinnerung
+        data:
+          datetime: >-
+            {{ (now() + timedelta(minutes=10))
+               .strftime('%Y-%m-%d %H:%M:%S') }}
+
+  # Erinnerung
+  - id: eliot_smartwork_erinnerung
+    alias: "Eliot SmartWork – Erinnerung"
+    triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.eliot_smartwork_aktiv
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.eliot_smartwork_heute_pause
+        state: "off"
+      - condition: state
+        entity_id: >-
+          binary_sensor.REPLACE_WITH_BLE_CONNECTION_ENTITY
+        state: "on"
+      - condition: time
+        after: "08:00:00"
+        before: "16:00:00"
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+      - condition: template
+        value_template: >-
+          {{ states('sensor.eliot_smartwork_position')
+             in ['sitzen', 'stehen'] }}
+      - condition: template
+        value_template: >-
+          {{ now().timestamp() >=
+             as_timestamp(states(
+               'input_datetime.eliot_smartwork_naechste_erinnerung'
+             ), 9999999999) }}
+    actions:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: sensor.eliot_smartwork_position
+                state: sitzen
+            sequence:
+              - action: notify.REPLACE_WITH_MOBILE_NOTIFY_ACTION
+                data:
+                  title: "Eliot SmartWork"
+                  message: "Zeit für eine Stehphase!"
+                  data:
+                    tag: eliot_smartwork
+                    actions:
+                      - action: ELIOT_STEHEN
+                        title: "Jetzt stehen"
+                      - action: ELIOT_SNOOZE
+                        title: "In 10 Minuten"
+                      - action: ELIOT_HEUTE_NICHT
+                        title: "Heute nicht"
+
+          - conditions:
+              - condition: state
+                entity_id: sensor.eliot_smartwork_position
+                state: stehen
+            sequence:
+              - action: notify.REPLACE_WITH_MOBILE_NOTIFY_ACTION
+                data:
+                  title: "Eliot SmartWork"
+                  message: "30 Minuten Stehen – wieder sitzen?"
+                  data:
+                    tag: eliot_smartwork
+                    actions:
+                      - action: ELIOT_SITZEN
+                        title: "Jetzt sitzen"
+                      - action: ELIOT_SNOOZE
+                        title: "In 10 Minuten"
+                      - action: ELIOT_HEUTE_NICHT
+                        title: "Heute nicht"
+
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.eliot_smartwork_naechste_erinnerung
+        data:
+          datetime: >-
+            {{ (now() + timedelta(minutes=10))
+               .strftime('%Y-%m-%d %H:%M:%S') }}
+
+  # iPhone-Aktionen
+  - id: eliot_smartwork_push_aktionen
+    alias: "Eliot SmartWork – Push-Aktionen"
+    triggers:
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: ELIOT_STEHEN
+        id: stehen
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: ELIOT_SITZEN
+        id: sitzen
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: ELIOT_SNOOZE
+        id: snooze
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: ELIOT_HEUTE_NICHT
+        id: heute_nicht
+
+    actions:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: heute_nicht
+            sequence:
+              - action: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.eliot_smartwork_heute_pause
+
+          - conditions:
+              - condition: trigger
+                id: snooze
+              - condition: state
+                entity_id: input_boolean.eliot_smartwork_aktiv
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.eliot_smartwork_heute_pause
+                state: "off"
+            sequence:
+              - action: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.eliot_smartwork_naechste_erinnerung
+                data:
+                  datetime: >-
+                    {{ (now() + timedelta(minutes=10))
+                       .strftime('%Y-%m-%d %H:%M:%S') }}
+
+          - conditions:
+              - condition: trigger
+                id: stehen
+              - condition: state
+                entity_id: input_boolean.eliot_smartwork_aktiv
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.eliot_smartwork_heute_pause
+                state: "off"
+              - condition: state
+                entity_id: >-
+                  binary_sensor.REPLACE_WITH_BLE_CONNECTION_ENTITY
+                state: "on"
+              - condition: state
+                entity_id: sensor.eliot_smartwork_position
+                state: sitzen
+              - condition: time
+                after: "08:00:00"
+                before: "16:00:00"
+                weekday:
+                  - mon
+                  - tue
+                  - wed
+                  - thu
+                  - fri
+            sequence:
+              - action: button.press
+                target:
+                  entity_id: button.REPLACE_WITH_STAND_BUTTON_ENTITY
+
+          - conditions:
+              - condition: trigger
+                id: sitzen
+              - condition: state
+                entity_id: input_boolean.eliot_smartwork_aktiv
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.eliot_smartwork_heute_pause
+                state: "off"
+              - condition: state
+                entity_id: >-
+                  binary_sensor.REPLACE_WITH_BLE_CONNECTION_ENTITY
+                state: "on"
+              - condition: state
+                entity_id: sensor.eliot_smartwork_position
+                state: stehen
+              - condition: time
+                after: "08:00:00"
+                before: "16:00:00"
+                weekday:
+                  - mon
+                  - tue
+                  - wed
+                  - thu
+                  - fri
+            sequence:
+              - action: button.press
+                target:
+                  entity_id: button.REPLACE_WITH_SIT_BUTTON_ENTITY
+
+    mode: queued
+    max: 5
