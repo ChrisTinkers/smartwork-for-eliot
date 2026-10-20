@@ -1,21 +1,89 @@
-MIT License
+# SmartWork for Eliot
 
-Copyright (c) 2026 ChrisTinkers
+**Unofficial ESPHome and Home Assistant integration for compatible Eliot sit-stand desks.**
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Control your desk via Bluetooth Low Energy (BLE), monitor its height, and receive gentle reminders to alternate between sitting and standing.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Built for everyday use: smart, practical, and unobtrusive.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+## Features
+
+- **Bluetooth desk control** using an ESP32 and ESPHome
+- **Live desk height monitoring** in Home Assistant
+- **Three memory positions** for sitting, standing, and treadmill use
+- **One-click position control** with intelligent retry logic
+- **Movement detection** based on height changes
+- **Stop command** for desk movement
+- **SmartWork reminders** with configurable sitting and standing intervals
+- **Interactive mobile notifications** to move the desk, snooze reminders, or pause for the day
+- **Manual control first:** reminders never move the desk without user interaction
+
+## How it works
+
+An ESP32 connects directly to the desk's Bluetooth controller using ESPHome.
+
+Home Assistant receives the desk height and movement status and provides buttons for controlling saved desk positions.
+
+An optional SmartWork automation monitors the desk's position and sends reminders when it may be time to change posture.
+
+The desk only moves when explicitly requested.
+
+## Tested hardware
+
+This project was developed and tested with:
+
+| Component | Hardware |
+|---|---|
+| Desk | Eliot electric sit-stand desk |
+| Controller | Jiecang JCB35N2-230 |
+| Bluetooth module | JCP35N-BLT-V3-H |
+| Microcontroller | ESP32 |
+| Firmware | ESPHome 2026.9.1 |
+| Smart home platform | Home Assistant |
+
+Other models and firmware versions may behave differently.
+
+## Project status
+
+**Early community release — tested in daily use on one desk.**
+
+The core functionality has been tested successfully, including BLE communication, height monitoring, desk movement, and SmartWork notifications.
+
+Compatibility with additional Eliot and Jiecang controllers has not yet been verified.
+
+## Installation
+
+The project consists of two components:
+
+1. **ESPHome configuration:** Connects the ESP32 to the desk via BLE and exposes controls and sensors.
+2. **Home Assistant package:** Provides position-based reminders and interactive notifications.
+
+Configuration files and detailed installation instructions will be added as the public release is prepared.
+
+## Safety
+
+This project controls a motorized, height-adjustable desk.
+
+- Always keep the desk's movement area clear.
+- Keep the original physical controls accessible.
+- Do not rely on the ESP32 or Home Assistant as a safety system.
+- Test each command carefully before using it in automations.
+- Bluetooth communication and behavior may differ between controller versions.
+
+The software is provided without warranty. Use it at your own risk.
+
+## Disclaimer
+
+This is an independent, unofficial open-source project. It is not affiliated with, endorsed by, or sponsored by Eliot, Jiecang, or their respective manufacturers.
+
+All trademarks belong to their respective owners.
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+
+Made by [ChrisTinkers](https://github.com/ChrisTinkers).
+
+*Useful technology for everyday life.*
