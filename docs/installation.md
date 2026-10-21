@@ -76,11 +76,13 @@ On the tested controller, the first position command sometimes only wakes the de
    | `button.REPLACE_WITH_STAND_BUTTON_ENTITY` | Stand preset button |
    | `button.REPLACE_WITH_SIT_BUTTON_ENTITY` | Sit preset button |
    | `notify.REPLACE_WITH_MOBILE_NOTIFY_ACTION` | Your working mobile notification action |
+   | `device_tracker.REPLACE_WITH_HOME_PRESENCE_TRACKER` | Your phone or person tracker that reports `home` / `not_home` |
 
    Example notification action: `notify.mobile_app_my_iphone` (**example only**). Confirm the actual action under **Developer Tools → Actions** and send a test notification before continuing. Replace the complete action name in both notification branches; do not add a second `notify.` prefix.
 5. Adjust the position thresholds in the package's template sensor. The sample logic is **below 95 cm = sitting; 95 to below 116 cm = standing; 116 cm and above = treadmill**. These thresholds reflect one user's desk and are **not universal**. Choose values that correctly classify your own presets.
-6. Review the default schedule and intervals in the package: **Monday–Friday, 08:00–16:00; 50 minutes sitting, 30 minutes standing, reminders every 10 minutes**. Edit them to suit your routine.
-7. Run Home Assistant's configuration check and restart Home Assistant to load the package. Check logs for errors. The package is an **example template** and has not been independently validated on a clean Home Assistant installation; test the adapted configuration before relying on it.
+6. Verify that your chosen presence tracker changes between `home` and `not_home` when you leave and return. SmartWork reminders and notification-triggered desk movement are blocked unless it reports `home`. Returning home resets the reminder timer after one minute. GPS home-zone presence is **not** proof that someone is sitting at the desk; a tracker may be stale or imprecise. This is an additional convenience safeguard, not a safety-rated interlock.
+7. Review the default schedule and intervals in the package: **Monday–Friday, 08:00–16:00; 50 minutes sitting, 30 minutes standing, reminders every 10 minutes**. Edit them to suit your routine.
+8. Run Home Assistant's configuration check and restart Home Assistant to load the package. Check logs for errors. The package is an **example template** and has not been independently validated on a clean Home Assistant installation; test the adapted configuration before relying on it.
 
 ## 6. Enable and test SmartWork
 
@@ -90,7 +92,7 @@ On the tested controller, the first position command sometimes only wakes the de
 4. Verify that a notification arrives on your phone. Available actions include **Jetzt stehen / Jetzt sitzen**, **In 10 Minuten**, and **Heute nicht** (wording may depend on the package version).
 5. Test each action with the desk supervised. **Only explicit user actions should initiate desk movement**; reminders themselves do not move it.
 
-The template currently does **not** detect whether a person is present at the desk. **LD2410C mmWave presence detection is planned, not implemented.**
+The template checks home-zone presence but does **not** detect whether a person is present at the desk. **LD2410C mmWave presence detection is planned, not implemented.**
 
 ## 7. Troubleshooting
 
@@ -100,7 +102,7 @@ The template currently does **not** detect whether a person is present at the de
 | No valid height | BLE connection and characteristic notifications; tested controller compatibility; wait for the initial read |
 | Button does nothing | Connection and height valid; desk stationary; memory preset configured; inspect ESPHome logs |
 | Movement appears late or not at all | Height notifications arriving; movement is estimated from height changes, not a dedicated hardware switch |
-| No reminders | SmartWork enabled; weekday/time window; no daily pause; BLE connected; position classified correctly; next-reminder timestamp |
+| No reminders | SmartWork enabled; weekday/time window; no daily pause; home presence tracker is `home`; BLE connected; position classified correctly; next-reminder timestamp |
 | Notification action does nothing | Correct `notify.mobile_app_*` service; Companion App notification permissions; correct button entity IDs; action conditions and active hours |
 
 ## 8. Limitations and contributions
