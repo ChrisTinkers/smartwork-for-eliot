@@ -4,6 +4,7 @@
 # 50 minutes sitting, 30 minutes standing, 10-minute reminder repeats.
 # Position thresholds (95 cm / 116 cm) must be adjusted to your own desk presets.
 # This file is a template, not a drop-in configuration.
+# Presence uses a HOME-ZONE tracker, not desk-level occupancy.
 
 
 # ============================================
@@ -134,6 +135,26 @@ automation:
                .strftime('%Y-%m-%d %H:%M:%S') }}
 
   # Erinnerung
+  # Reset reminder timer when the user returns home
+  - id: eliot_smartwork_rueckkehr
+    alias: "Eliot SmartWork – Rückkehr nach Hause"
+    triggers:
+      - trigger: state
+        entity_id: device_tracker.REPLACE_WITH_HOME_PRESENCE_TRACKER
+        to: "home"
+        for: "00:01:00"
+    actions:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.eliot_smartwork_naechste_erinnerung
+        data:
+          datetime: >-
+            {% set minuten =
+               30 if is_state('sensor.eliot_smartwork_position', 'stehen')
+               else 50 %}
+            {{ (now() + timedelta(minutes=minuten))
+               .strftime('%Y-%m-%d %H:%M:%S') }}
+
   - id: eliot_smartwork_erinnerung
     alias: "Eliot SmartWork – Erinnerung"
     triggers:
@@ -146,6 +167,9 @@ automation:
       - condition: state
         entity_id: input_boolean.eliot_smartwork_heute_pause
         state: "off"
+      - condition: state
+        entity_id: device_tracker.REPLACE_WITH_HOME_PRESENCE_TRACKER
+        state: "home"
       - condition: state
         entity_id: >-
           binary_sensor.REPLACE_WITH_BLE_CONNECTION_ENTITY
@@ -280,6 +304,9 @@ automation:
                 entity_id: input_boolean.eliot_smartwork_heute_pause
                 state: "off"
               - condition: state
+                entity_id: device_tracker.REPLACE_WITH_HOME_PRESENCE_TRACKER
+                state: "home"
+              - condition: state
                 entity_id: >-
                   binary_sensor.REPLACE_WITH_BLE_CONNECTION_ENTITY
                 state: "on"
@@ -309,6 +336,9 @@ automation:
               - condition: state
                 entity_id: input_boolean.eliot_smartwork_heute_pause
                 state: "off"
+              - condition: state
+                entity_id: device_tracker.REPLACE_WITH_HOME_PRESENCE_TRACKER
+                state: "home"
               - condition: state
                 entity_id: >-
                   binary_sensor.REPLACE_WITH_BLE_CONNECTION_ENTITY
