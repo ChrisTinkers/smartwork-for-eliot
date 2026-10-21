@@ -18,6 +18,7 @@ Built for everyday use: smart, practical, and unobtrusive.
 - **Stop command** for desk movement
 - **SmartWork reminders** with configurable sitting and standing intervals
 - **Interactive mobile notifications** to move the desk, snooze reminders, or pause for the day
+- **Home-presence gating** to suppress reminders and block notification-triggered desk movement when away
 - **Manual control first:** reminders never move the desk without user interaction
 
 ## How it works
@@ -26,9 +27,9 @@ An ESP32 connects directly to the desk's Bluetooth controller using ESPHome.
 
 Home Assistant receives the desk height and movement status and provides buttons for controlling saved desk positions.
 
-An optional SmartWork automation monitors the desk's position and sends reminders when it may be time to change posture.
+An optional SmartWork automation monitors the desk's position and sends reminders when it may be time to change posture. It also checks a configurable home-presence tracker before sending reminders or acting on notification movement requests.
 
-The desk only moves when explicitly requested.
+The desk only moves when explicitly requested. Home-zone presence does not confirm that someone is at the desk.
 
 ## Tested hardware
 
@@ -85,7 +86,7 @@ SmartWork for Eliot consists of two components:
 3. Install the [ESPHome configuration](esphome/eliot-desk.yaml).
 4. Verify that height monitoring and desk controls work correctly.
 5. Optionally install the [Home Assistant SmartWork package](home-assistant/eliot-smartwork.yaml).
-6. Configure your own entity IDs, mobile notification service, working hours, and reminder intervals.
+6. Configure your own entity IDs, home-presence tracker, mobile notification service, working hours, and reminder intervals.
 
 **[📖 Read the full installation guide](docs/installation.md)**
 
